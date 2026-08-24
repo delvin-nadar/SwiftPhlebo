@@ -6,11 +6,13 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { PhlebotomistPortal } from './components/phlebotomist/PhlebotomistPortal';
 import { SecurityVerifierModal } from './components/security/SecurityVerifierModal';
 import { TrackOrderModal } from './components/patient/TrackOrderModal';
+import { SharePortalModal } from './components/common/SharePortalModal';
 
 const MainContent: React.FC = () => {
   const { currentRole, setActiveTrackingOrderId } = useApp();
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const handleSelectTrackedOrder = (orderId: string) => {
     setActiveTrackingOrderId(orderId);
@@ -22,6 +24,7 @@ const MainContent: React.FC = () => {
       <Header
         onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
         onOpenTrackModal={() => setIsTrackModalOpen(true)}
+        onOpenShareModal={() => setIsShareModalOpen(true)}
       />
 
       {/* Main View Area based on authenticated user role */}
@@ -65,6 +68,12 @@ const MainContent: React.FC = () => {
         isOpen={isTrackModalOpen}
         onClose={() => setIsTrackModalOpen(false)}
         onSelectOrder={handleSelectTrackedOrder}
+      />
+
+      {/* Share Direct Portals Modal */}
+      <SharePortalModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
     </div>
   );

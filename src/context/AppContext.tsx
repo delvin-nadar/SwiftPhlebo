@@ -87,10 +87,39 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Default to Lab A on first load for easy inspection
-  const [currentUser, setCurrentUser] = useState<AuthUser>(DEMO_USERS[0]);
+  // Default to Lab A on first load, or detect from ?portal= / ?user= / ?role= query parameters
+  const [currentUser, setCurrentUser] = useState<AuthUser>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const portalParam = urlParams.get('portal') || urlParams.get('user') || urlParams.get('role');
+      if (portalParam) {
+        const found = DEMO_USERS.find(
+          u =>
+            u.id === portalParam ||
+            u.role === portalParam ||
+            u.labId?.toLowerCase() === portalParam.toLowerCase() ||
+            u.phlebotomistId?.toLowerCase() === portalParam.toLowerCase() ||
+            u.email.toLowerCase() === portalParam.toLowerCase()
+        );
+        if (found) return found;
+      }
+    } catch {
+      // Ignore
+    }
+    return DEMO_USERS[0];
+  });
+
   const [demoUsers] = useState<AuthUser[]>(DEMO_USERS);
-  const [activeTrackingOrderId, setActiveTrackingOrderId] = useState<string | null>(null);
+  const [activeTrackingOrderId, setActiveTrackingOrderId] = useState<string | null>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const trackParam = urlParams.get('track') || urlParams.get('order');
+      if (trackParam) return trackParam;
+    } catch {
+      // Ignore
+    }
+    return null;
+  });
 
   // Master local store for orders to support static / GitHub Pages deployment
   const [allOrdersStore, setAllOrdersStore] = useState<Order[]>(() => {

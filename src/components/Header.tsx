@@ -11,17 +11,20 @@ import {
   RefreshCw,
   Lock,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  Share2
 } from 'lucide-react';
 
 interface HeaderProps {
   onOpenSecurityModal: () => void;
   onOpenTrackModal: () => void;
+  onOpenShareModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenSecurityModal,
-  onOpenTrackModal
+  onOpenTrackModal,
+  onOpenShareModal
 }) => {
   const {
     currentRole,
@@ -171,6 +174,17 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Share Portals Button */}
+              <button
+                id="share-portals-btn"
+                onClick={onOpenShareModal}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-sm"
+                title="Get shareable links for Diagnostic Labs (Clients) and Phlebotomists"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Share Links</span>
+              </button>
 
               {/* Security & Authorization Verifier Button */}
               <button

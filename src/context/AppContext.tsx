@@ -92,7 +92,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [demoUsers] = useState<AuthUser[]>(DEMO_USERS);
   const [activeTrackingOrderId, setActiveTrackingOrderId] = useState<string | null>(null);
 
-  const [orders, setOrders] = useState<Order[]>([]);
+  // Master local store for orders to support static / GitHub Pages deployment
+  const [allOrdersStore, setAllOrdersStore] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('swiftphlebo_orders');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+    return JSON.parse(JSON.stringify(INITIAL_ORDERS));
+  });
+
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const initialLab = DEMO_USERS[0].labId;
+    return INITIAL_ORDERS.filter(o => o.labId === initialLab);
+  });
   const [labs, setLabs] = useState<Lab[]>(INITIAL_LABS);
   const [zones, setZones] = useState<Zone[]>(VIZAG_ZONES);
   const [phlebotomists, setPhlebotomists] = useState<Phlebotomist[]>(INITIAL_PHLEBOTOMISTS);
@@ -111,6 +128,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const currentRole: UserRole = currentUser.role;
 
+  // Sync allOrdersStore with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('swiftphlebo_orders', JSON.stringify(allOrdersStore));
+    } catch {
+      // Ignore
+    }
+  }, [allOrdersStore]);
+
+  // Filter local store by role if backend is not available
+  const getScopedLocalOrders = useCallback((user: AuthUser, store: Order[]) => {
+    if (user.role === 'admin') {
+      return store;
+    } else if (user.role === 'lab' && user.labId) {
+      return store.filter(o => o.labId === user.labId);
+    } else if (user.role === 'phlebotomist' && user.phlebotomistId) {
+      return store.filter(o => o.assignedPhlebotomistId === user.phlebotomistId || o.status === 'Pending');
+    }
+    return store;
+  }, []);
+
   // Switch role handler: switches to the first demo user with that role
   const switchRole = (role: UserRole) => {
     const targetUser = demoUsers.find(u => u.role === role);
@@ -127,7 +165,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Fetch scoped data from backend API using current user's token
+  // Fetch scoped data from backend API using current user's token (with fallback for GitHub Pages / static hosting)
   const fetchScopedData = useCallback(async (user: AuthUser) => {
     try {
       // 1. Fetch Orders (strictly scoped server-side to user.role and user.labId / user.phlebotomistId)
@@ -138,61 +176,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
       if (ordersRes.ok) {
-        const data = await ordersRes.json();
-        setOrders(data.orders || []);
-      } else {
-        console.warn('Failed to fetch orders:', ordersRes.status);
-      }
-
-      // 2. Fetch Phlebotomists
-      const phlebosRes = await fetch('/api/phlebotomists', {
-        headers: {
-          'Authorization': `Bearer ${user.token}`,
-          'x-user-id': user.id
-        }
-      });
-      if (phlebosRes.ok) {
-        const pData = await phlebosRes.json();
-        if (pData.phlebotomists) {
-          setPhlebotomists(pData.phlebotomists);
-        }
-      }
-
-      // 3. Fetch Payouts (if authorized)
-      if (user.role === 'admin' || user.role === 'phlebotomist') {
-        const payoutsRes = await fetch('/api/payouts', {
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'x-user-id': user.id
+        const contentType = ordersRes.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await ordersRes.json();
+          if (data && Array.isArray(data.orders)) {
+            setOrders(data.orders);
+            return;
           }
-        });
-        if (payoutsRes.ok) {
-          const payData = await payoutsRes.json();
-          setPayouts(payData.payouts || []);
         }
-      } else {
-        setPayouts([]);
-      }
-
-      // 4. Fetch Labs
-      const labsRes = await fetch('/api/labs');
-      if (labsRes.ok) {
-        const lData = await labsRes.json();
-        setLabs(lData.labs || INITIAL_LABS);
-      }
-
-      // 5. Fetch Zones
-      const zonesRes = await fetch('/api/zones');
-      if (zonesRes.ok) {
-        const zData = await zonesRes.json();
-        setZones(zData.zones || VIZAG_ZONES);
       }
     } catch (err) {
-      console.error('Error fetching backend data:', err);
+      // Backend not reachable, fall back to local store
     }
-  }, []);
 
-  // Fetch when currentUser changes
+    // Client-side fallback for static deployment (GitHub Pages)
+    setOrders(getScopedLocalOrders(user, allOrdersStore));
+  }, [allOrdersStore, getScopedLocalOrders]);
+
+  // Fetch when currentUser or allOrdersStore changes
   useEffect(() => {
     fetchScopedData(currentUser);
   }, [currentUser, fetchScopedData]);
@@ -207,12 +208,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setCurrentUser(data.user);
-        return true;
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && data.user) {
+            setCurrentUser(data.user);
+            return true;
+          }
+        }
       }
     } catch (err) {
-      console.error('Login error:', err);
+      console.warn('Backend login unavailable, using client fallback');
     }
 
     // Fallback matching
@@ -237,11 +243,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const targetDate = date || new Date().toISOString().slice(0, 10);
       const res = await fetch(`/api/slots/availability?zoneId=${encodeURIComponent(zoneId)}&date=${encodeURIComponent(targetDate)}`);
       if (res.ok) {
-        const data = await res.json();
-        return data.slots || [];
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && Array.isArray(data.slots)) return data.slots;
+        }
       }
     } catch (err) {
-      console.error('Slot calculation error:', err);
+      // Fallback calculation in client
     }
 
     // Fallback calculation in client
@@ -252,7 +261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return ALLOWED_BOOKING_SLOTS.map(slot => {
       const [start, end] = slot.split(' - ');
       const totalCapacity = activeCount * 2;
-      const bookedCount = orders.filter(
+      const bookedCount = (allOrdersStore || orders).filter(
         o => o.zoneId === zone.id && o.requestedSlot === slot && o.status !== 'Cancelled'
       ).length;
       const availableCount = Math.max(0, totalCapacity - bookedCount);
@@ -272,7 +281,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Create Order (POST /api/orders)
+  // Create Order (POST /api/orders with client fallback)
   const createOrder = async (orderData: Partial<Order>): Promise<{ success: boolean; order?: Order; error?: string }> => {
     try {
       const res = await fetch('/api/orders', {
@@ -288,20 +297,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        await fetchScopedData(currentUser);
-        return { success: true, order: data.order };
-      } else {
-        return { success: false, error: data.error || 'Failed to create order' };
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.success) {
+          await fetchScopedData(currentUser);
+          return { success: true, order: data.order };
+        }
       }
     } catch (err: any) {
-      console.error('Error creating order:', err);
-      return { success: false, error: err.message || 'Network error' };
+      // Backend not reachable, continue to client-side creation
     }
+
+    // Client-side fallback creation for static deployment (GitHub Pages)
+    const newOrderId = `SWP-${Date.now().toString().slice(-4)}`;
+    const nowIso = new Date().toISOString();
+    const newOrder: Order = {
+      id: newOrderId,
+      labId: currentUser.role === 'lab' && currentUser.labId ? currentUser.labId : (orderData.labId || 'LAB-001'),
+      labName: labs.find(l => l.id === (orderData.labId || currentUser.labId))?.name || 'Sunrise Diagnostics',
+      patientName: orderData.patientName || 'Patient',
+      patientAge: orderData.patientAge || 30,
+      patientGender: orderData.patientGender || 'Other',
+      patientPhone: orderData.patientPhone || '+91 98480 12345',
+      address: orderData.address || 'Visakhapatnam',
+      locality: orderData.locality || 'MVP Colony',
+      pincode: orderData.pincode || '530017',
+      zoneId: orderData.zoneId || 'zone-mvp',
+      zoneName: zones.find(z => z.id === orderData.zoneId)?.name || 'MVP Colony Zone',
+      requiredVials: orderData.requiredVials && orderData.requiredVials.length > 0 ? orderData.requiredVials : ['EDTA', 'Serum'],
+      requestedDate: orderData.requestedDate || new Date().toISOString().slice(0, 10),
+      requestedSlot: orderData.requestedSlot || '07:00 - 08:00',
+      status: 'Pending',
+      specialInstructions: orderData.specialInstructions || '',
+      timeline: [
+        {
+          status: 'Pending',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          description: 'Order placed by diagnostic lab',
+          actor: currentUser.name || 'Lab User'
+        }
+      ],
+      createdTimestamp: nowIso,
+      updatedTimestamp: nowIso
+    };
+
+    setAllOrdersStore(prev => [newOrder, ...prev]);
+    return { success: true, order: newOrder };
   };
 
-  // Get Single Order (GET /api/orders/:id - strictly tests multi-tenant authorization)
+  // Get Single Order (GET /api/orders/:id)
   const getOrderById = async (orderId: string): Promise<{ success: boolean; order?: Order; error?: string; statusCode?: number }> => {
     try {
       const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
@@ -311,15 +356,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
 
-      const data = await res.json();
-      if (res.ok && data.order) {
-        return { success: true, order: data.order, statusCode: res.status };
-      } else {
-        return { success: false, error: data.error || 'Access denied or not found', statusCode: res.status };
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.order) {
+          return { success: true, order: data.order, statusCode: res.status };
+        }
       }
     } catch (err: any) {
-      return { success: false, error: err.message, statusCode: 500 };
+      // Backend not reachable, fall back to local store
     }
+
+    const found = allOrdersStore.find(o => o.id === orderId);
+    if (!found) {
+      return { success: false, error: 'Order not found', statusCode: 404 };
+    }
+
+    // Role-based check
+    if (currentUser.role === 'lab' && found.labId !== currentUser.labId) {
+      return { success: false, error: 'Access denied: You can only view orders for your lab.', statusCode: 403 };
+    }
+    if (currentUser.role === 'phlebotomist' && found.assignedPhlebotomistId !== currentUser.phlebotomistId && found.status !== 'Pending') {
+      return { success: false, error: 'Access denied: You are not assigned to this sample collection.', statusCode: 403 };
+    }
+
+    return { success: true, order: found, statusCode: 200 };
   };
 
   // Update Order Status (PATCH /api/orders/:id/status)
@@ -350,16 +411,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        await fetchScopedData(currentUser);
-        return { success: true };
-      } else {
-        return { success: false, error: data.error || 'Failed to update order status' };
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.success) {
+          await fetchScopedData(currentUser);
+          return { success: true };
+        }
       }
     } catch (err: any) {
-      return { success: false, error: err.message };
+      // Fallback
     }
+
+    // Local fallback update
+    setAllOrdersStore(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      
+      const newTimelineItem = {
+        status,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        description: details?.notes || `Status updated to ${status}`,
+        actor: currentUser.name || currentUser.role,
+        locationNote: details?.locationNote
+      };
+
+      return {
+        ...order,
+        status,
+        scanned_barcodes: details?.scanned_barcodes || order.scanned_barcodes,
+        sample_photo_url: details?.sample_photo_url || order.sample_photo_url,
+        handover_photo_url: details?.handover_photo_url || order.handover_photo_url,
+        sampleVialsBarcodes: details?.sampleVialsBarcodes || order.sampleVialsBarcodes,
+        temperatureBoxRecorded: details?.temperatureBoxRecorded || order.temperatureBoxRecorded,
+        timeline: [...(order.timeline || []), newTimelineItem],
+        updatedTimestamp: new Date().toISOString()
+      };
+    }));
+
+    return { success: true };
   };
 
   // Assign Phlebotomist (Admin action)

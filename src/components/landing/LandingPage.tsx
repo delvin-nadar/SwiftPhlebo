@@ -53,6 +53,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isFormHighlighted, setIsFormHighlighted] = useState(false);
+
+  const scrollToPartnershipForm = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setMobileMenuOpen(false);
+    
+    const formElement = document.getElementById('partnership-form') || document.getElementById('partner');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setIsFormHighlighted(true);
+      
+      setTimeout(() => {
+        const input = document.getElementById('partnership-business-name') as HTMLInputElement | null;
+        if (input) {
+          input.focus();
+        }
+      }, 500);
+
+      setTimeout(() => {
+        setIsFormHighlighted(false);
+      }, 2500);
+    }
+  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,12 +157,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>Client Login</span>
             </button>
 
-            <a
-              href="#partner"
+            <button
+              onClick={scrollToPartnershipForm}
               className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#087ea4] hover:bg-[#075f7d] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#087ea4]/20 transition-all hover:-translate-y-0.5"
             >
               <span>Partner With Us</span>
-            </a>
+            </button>
 
             {/* Mobile Menu Toggle Button */}
             <button
@@ -215,6 +238,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <UserCheck className="w-4 h-4" />
                 <span>Phlebotomist Login</span>
               </button>
+
+              <button
+                onClick={scrollToPartnershipForm}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#087ea4] text-white font-bold text-sm hover:bg-[#075f7d] flex items-center justify-center gap-2 shadow-xs"
+              >
+                <span>Partner With Us →</span>
+              </button>
             </div>
           </div>
         )}
@@ -244,13 +274,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
-                <a
-                  href="#partner"
+                <button
+                  onClick={scrollToPartnershipForm}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#087ea4] hover:bg-[#075f7d] text-white font-bold text-sm sm:text-base shadow-lg shadow-[#087ea4]/25 transition-all hover:-translate-y-0.5"
                 >
                   <span>Partner With SecondMedic</span>
                   <ArrowRight className="w-4 h-4" />
-                </a>
+                </button>
 
                 <a
                   href="#how"
@@ -733,10 +763,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Right Column: Partnership Request Form */}
-            <div className="bg-white border border-[#dceaf0] rounded-3xl p-6 sm:p-8 shadow-[0_18px_50px_rgba(12,61,83,0.10)]">
-              <h3 className="text-xl sm:text-2xl font-extrabold text-[#123044] mb-1">
-                Request a partnership call
-              </h3>
+            <div
+              id="partnership-form"
+              className={`bg-white border rounded-3xl p-6 sm:p-8 transition-all duration-500 ${
+                isFormHighlighted
+                  ? 'border-[#087ea4] ring-4 ring-[#087ea4]/20 shadow-[0_20px_60px_rgba(8,126,164,0.22)] scale-[1.01]'
+                  : 'border-[#dceaf0] shadow-[0_18px_50px_rgba(12,61,83,0.10)]'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="text-xl sm:text-2xl font-extrabold text-[#123044]">
+                  Request a partnership call
+                </h3>
+                {isFormHighlighted && (
+                  <span className="text-[11px] font-bold text-[#087ea4] bg-[#e8f7fa] px-2.5 py-1 rounded-full animate-pulse border border-[#bcd8e2]">
+                    Fill details below
+                  </span>
+                )}
+              </div>
               <p className="text-xs sm:text-sm text-[#607585] mb-6">
                 For diagnostic labs, clinics and healthcare businesses.
               </p>
@@ -766,6 +810,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         Business Name *
                       </label>
                       <input
+                        id="partnership-business-name"
                         type="text"
                         required
                         value={formData.business}
@@ -1040,12 +1085,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </p>
               </div>
 
-              <a
-                href="#partner"
+              <button
+                onClick={scrollToPartnershipForm}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#087ea4] hover:bg-[#075f7d] text-white font-bold text-sm sm:text-base shadow-md shadow-[#087ea4]/20 shrink-0 transition-all hover:-translate-y-0.5"
               >
                 <span>Partner With Us →</span>
-              </a>
+              </button>
             </div>
           </div>
         </section>
@@ -1076,7 +1121,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex flex-col space-y-2 text-xs text-[#d4e9ef]">
               <a href="#services" className="hover:text-white transition-colors">On-Demand Phlebotomy</a>
               <a href="#services" className="hover:text-white transition-colors">Home Collection Support</a>
-              <a href="#partner" className="hover:text-white transition-colors">Lab Partnership</a>
+              <button onClick={scrollToPartnershipForm} className="text-left hover:text-white transition-colors">Lab Partnership</button>
               <a href="#how" className="hover:text-white transition-colors">Client Booking</a>
             </div>
           </div>
@@ -1097,7 +1142,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               >
                 <span>Phlebotomist Login</span>
               </button>
-              <a href="#partner" className="hover:text-white transition-colors">Partner With Us</a>
+              <button onClick={scrollToPartnershipForm} className="text-left hover:text-white transition-colors">Partner With Us</button>
             </div>
           </div>
 
@@ -1107,7 +1152,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex flex-col space-y-2 text-xs text-[#d4e9ef]">
               <a href="#home" className="hover:text-white transition-colors">About SecondMedic</a>
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-              <a href="#partner" className="hover:text-white transition-colors">Contact / Partnership</a>
+              <button onClick={scrollToPartnershipForm} className="text-left hover:text-white transition-colors">Contact / Partnership</button>
             </div>
           </div>
 

@@ -73,7 +73,7 @@ interface AppContextType {
   togglePhlebotomistDuty: (phleboId: string, onDuty: boolean) => Promise<void>;
   
   // Payout Actions
-  markPayoutPaid: (payoutId: string) => Promise<void>;
+  markPayoutPaid: (payoutId: string, paymentRef?: string) => Promise<void>;
   
   // Security Verification Suite
   runSecurityTestSuite: () => Promise<{ allPassed: boolean; testsCount: number; testsPassed: number; results: SecurityTestResult[] }>;
@@ -478,19 +478,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Mark Payout Paid (PATCH /api/payouts/:id/pay)
-  const markPayoutPaid = async (payoutId: string) => {
+  const markPayoutPaid = async (payoutId: string, paymentRef?: string) => {
     try {
       await fetch(`/api/payouts/${encodeURIComponent(payoutId)}/pay`, {
         method: 'PATCH',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${currentUser.token}`,
           'x-user-id': currentUser.id
-        }
+        },
+        body: JSON.stringify({ paymentRef })
       });
       await fetchScopedData(currentUser);
     } catch (err) {
       console.error('Payout error:', err);
     }
+    setPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: 'Paid', paymentRef: paymentRef || 'UPI-REF' } : p));
   };
 
   // Run Backend Security Verification Suite (GET /api/security/test-suite)

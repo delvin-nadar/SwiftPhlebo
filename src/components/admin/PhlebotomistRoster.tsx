@@ -116,7 +116,7 @@ export const PhlebotomistRoster: React.FC = () => {
                   {/* On Duty Switch */}
                   <button
                     type="button"
-                    onClick={() => togglePhlebotomistDuty(phlebo.id)}
+                    onClick={() => togglePhlebotomistDuty(phlebo.id, !phlebo.onDuty)}
                     className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center space-x-1 ${
                       phlebo.onDuty
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'

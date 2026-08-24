@@ -26,7 +26,7 @@ const MainContent: React.FC = () => {
 
       {/* Main View Area based on authenticated user role */}
       <main className="flex-1 pb-16">
-        {(currentRole === 'lab' || currentRole === 'patient') && (
+        {currentRole === 'lab' && (
           <LabPortal onOpenSecurityModal={() => setIsSecurityModalOpen(true)} />
         )}
 

@@ -17,13 +17,13 @@ export const AnalyticsPanel: React.FC = () => {
 
   const totalOrders = orders.length;
   const completedOrders = orders.filter(
-    o => o.status === 'Handed to Lab' || o.status === 'Report Ready' || o.status === 'Sample Collected'
+    o => o.status === 'Handed to Lab' || o.status === 'Sample Collected'
   ).length;
   const onTimeRate = 96.4;
   const avgCollectionMinutes = 18;
   const coldBoxCompliance = 99.1;
 
-  const totalGMV = orders.reduce((sum, o) => sum + o.finalAmount, 0);
+  const totalGMV = orders.length * 450;
 
   // Group by zone
   const zoneDistribution = zones.map(z => {
@@ -126,7 +126,7 @@ export const AnalyticsPanel: React.FC = () => {
                 <div key={lab.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
                   <div>
                     <div className="font-bold text-slate-900">{lab.name}</div>
-                    <div className="text-slate-500 text-[11px]">{lab.locality} • {(lab.commissionRate * 100).toFixed(0)}% margin</div>
+                    <div className="text-slate-500 text-[11px]">{lab.locality} • Rating {lab.rating}★</div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-slate-900">{labOrders} orders</div>

@@ -35,14 +35,14 @@ export const LabManagement: React.FC = () => {
     addLab({
       name: newLabName,
       badge: newLabBadge,
-      logo: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=120&h=120&q=80',
+      code: `LAB-${newLabName.slice(0, 3).toUpperCase()}`,
+      email: `${newLabName.toLowerCase().replace(/\s+/g, '')}@vizaglab.com`,
+      totalOrders: 0,
       address: newLabAddress,
-      locality: newLabLocality,
+      locality: newLabLocality || 'Visakhapatnam',
       phone: newLabPhone,
-      commissionRate: newLabCommission,
       status: 'active',
-      rating: 4.8,
-      ratingCount: 10
+      rating: 4.8
     });
 
     setShowAddLabModal(false);
@@ -86,11 +86,9 @@ export const LabManagement: React.FC = () => {
                 {/* Lab Header */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
-                    <img
-                      src={lab.logo}
-                      alt={lab.name}
-                      className="w-12 h-12 rounded-2xl object-cover border border-slate-200"
-                    />
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 font-bold shrink-0">
+                      <Building2 className="w-6 h-6" />
+                    </div>
                     <div>
                       <div className="flex items-center space-x-2">
                         <h3 className="font-extrabold text-sm text-slate-900">{lab.name}</h3>

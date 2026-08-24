@@ -1,6 +1,6 @@
 {
   "name": "SwiftPhlebo",
-  "description": "On-demand phlebotomist fulfillment marketplace for small diagnostic labs in Visakhapatnam (Vizag)",
+  "description": "SecondMedic on-demand phlebotomist fulfillment network for diagnostic laboratories in Visakhapatnam (Vizag)",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
+import { SecondMedicLogo } from './common/SecondMedicLogo';
 import {
   Activity,
   ShieldCheck,
@@ -47,26 +48,13 @@ export const Header: React.FC<HeaderProps> = ({
             
             {/* Logo & City */}
             <div className="flex items-center space-x-3">
-              <div
-                id="brand-logo"
-                className="flex items-center space-x-2.5"
-              >
-                <div className="w-10 h-10 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-slate-950 font-black text-xl tracking-tight">
-                  <Activity className="w-6 h-6 text-slate-950 stroke-[2.5]" />
-                </div>
-                <div>
-                  <div className="flex items-center space-x-1.5">
-                    <span className="font-bold text-lg tracking-tight text-white">
-                      Swift<span className="text-emerald-400">Phlebo</span>
-                    </span>
-                    <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                      Vizag
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 hidden sm:block">
-                    Diagnostic Phlebotomist Fulfillment Network
-                  </p>
-                </div>
+              <div id="brand-logo" className="flex items-center">
+                <SecondMedicLogo
+                  height={38}
+                  variant="dark"
+                  showTagline={true}
+                  cityBadge={true}
+                />
               </div>
 
               {/* City & Multi-Tenant Status */}

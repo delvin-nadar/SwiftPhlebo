@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { SecondMedicLogo } from '../common/SecondMedicLogo';
 import {
   Activity,
   Lock,
@@ -7,6 +8,7 @@ import {
   ShieldCheck,
   KeyRound,
   ArrowRight,
+  ArrowLeft,
   AlertCircle,
   Eye,
   EyeOff,
@@ -16,12 +18,22 @@ import {
 import { DEMO_USERS } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
 
-export const LoginScreen: React.FC = () => {
+interface LoginScreenProps {
+  initialCategory?: 'lab' | 'phlebotomist' | 'admin';
+  onBackToLanding?: () => void;
+}
+
+export const LoginScreen: React.FC<LoginScreenProps> = ({
+  initialCategory = 'lab',
+  onBackToLanding
+}) => {
   const { loginWithPassword } = useApp();
 
   // Selected portal category
-  const [activeCategory, setActiveCategory] = useState<'lab' | 'phlebotomist' | 'admin'>('lab');
-  const [identifier, setIdentifier] = useState<string>('');
+  const [activeCategory, setActiveCategory] = useState<'lab' | 'phlebotomist' | 'admin'>(initialCategory);
+  const [identifier, setIdentifier] = useState<string>(
+    initialCategory === 'lab' ? 'LAB-A' : initialCategory === 'phlebotomist' ? 'PHL-1' : 'admin@swiftphlebo.in'
+  );
   const [password, setPassword] = useState<string>('password123');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,8 +74,14 @@ export const LoginScreen: React.FC = () => {
     }
 
     // Default identifier placeholder based on initial category
-    setIdentifier('LAB-A');
-  }, []);
+    if (initialCategory === 'lab') {
+      setIdentifier('LAB-A');
+    } else if (initialCategory === 'phlebotomist') {
+      setIdentifier('PHL-1');
+    } else {
+      setIdentifier('admin@swiftphlebo.in');
+    }
+  }, [initialCategory]);
 
   const handleCategoryChange = (category: 'lab' | 'phlebotomist' | 'admin') => {
     setActiveCategory(category);
@@ -108,23 +126,31 @@ export const LoginScreen: React.FC = () => {
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* Brand Header */}
-      <div className="text-center mb-6 z-10">
-        <div className="inline-flex items-center space-x-3 mb-2">
-          <div className="w-12 h-12 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-xl shadow-emerald-500/20 text-slate-950 font-black">
-            <Activity className="w-7 h-7 text-slate-950 stroke-[2.5]" />
-          </div>
-          <div className="text-left">
-            <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-2xl tracking-tight text-white">
-                Swift<span className="text-emerald-400">Phlebo</span>
-              </span>
-              <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-950/90 text-emerald-300 border border-emerald-800/80">
-                VIZAG
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">Multi-Tenant Diagnostic Fulfillment Network</p>
-          </div>
+      {/* Brand Header & Back Button */}
+      <div className="w-full max-w-md flex items-center justify-between mb-5 z-10">
+        {onBackToLanding ? (
+          <button
+            onClick={onBackToLanding}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Home</span>
+          </button>
+        ) : <div />}
+
+        <div className="text-[11px] font-mono text-slate-500">
+          SwiftPhlebo Vizag
+        </div>
+      </div>
+
+      <div className="text-center mb-6 z-10 flex flex-col items-center">
+        <div className="bg-slate-900/90 border border-slate-800/90 px-5 py-3 rounded-2xl shadow-xl shadow-cyan-950/30">
+          <SecondMedicLogo
+            height={46}
+            variant="dark"
+            showTagline={true}
+            cityBadge={true}
+          />
         </div>
       </div>
 

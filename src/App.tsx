@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { LabPortal } from './components/lab/LabPortal';
@@ -7,23 +7,86 @@ import { PhlebotomistPortal } from './components/phlebotomist/PhlebotomistPortal
 import { SecurityVerifierModal } from './components/security/SecurityVerifierModal';
 import { TrackOrderModal } from './components/patient/TrackOrderModal';
 import { LoginScreen } from './components/auth/LoginScreen';
+import { LandingPage } from './components/landing/LandingPage';
 
 const MainContent: React.FC = () => {
   const { currentRole, isAuthenticated, setActiveTrackingOrderId } = useApp();
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+  
+  // Navigation view state when unauthenticated
+  const [viewMode, setViewMode] = useState<'landing' | 'login'>('landing');
+  const [loginCategory, setLoginCategory] = useState<'lab' | 'phlebotomist' | 'admin'>('lab');
+
+  // Auto-detect direct portal parameter in URL
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const portalParam = urlParams.get('portal') || urlParams.get('user') || urlParams.get('role') || urlParams.get('login');
+      if (portalParam) {
+        if (portalParam.toLowerCase().includes('phlebo') || portalParam.toLowerCase().startsWith('phl')) {
+          setLoginCategory('phlebotomist');
+        } else if (portalParam.toLowerCase().includes('admin') || portalParam.toLowerCase().includes('ops')) {
+          setLoginCategory('admin');
+        } else {
+          setLoginCategory('lab');
+        }
+        setViewMode('login');
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const handleSelectTrackedOrder = (orderId: string) => {
     setActiveTrackingOrderId(orderId);
   };
 
-  // If user is not authenticated, show password / PIN authorization gate
+  const handleOpenClientLogin = () => {
+    setLoginCategory('lab');
+    setViewMode('login');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenPhlebotomistLogin = () => {
+    setLoginCategory('phlebotomist');
+    setViewMode('login');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenAdminLogin = () => {
+    setLoginCategory('admin');
+    setViewMode('login');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // If user is not authenticated:
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    if (viewMode === 'login') {
+      return (
+        <LoginScreen
+          initialCategory={loginCategory}
+          onBackToLanding={() => {
+            setViewMode('landing');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      );
+    }
+
+    // Main landing page (Default root screen /)
+    return (
+      <LandingPage
+        onClientLogin={handleOpenClientLogin}
+        onPhlebotomistLogin={handleOpenPhlebotomistLogin}
+        onAdminLogin={handleOpenAdminLogin}
+      />
+    );
   }
 
+  // If authenticated, show respective internal workspace
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans selection:bg-[#087ea4] selection:text-white">
       {/* Universal Multi-Tenant Header */}
       <Header
         onOpenSecurityModal={() => setIsSecurityModalOpen(true)}
@@ -49,7 +112,7 @@ const MainContent: React.FC = () => {
       <footer className="bg-white border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
-            <span className="font-bold text-slate-900">SwiftPhlebo Vizag</span>
+            <span className="font-bold text-slate-900">SecondMedic (SwiftPhlebo) Vizag</span>
             <span>•</span>
             <span>Multi-Tenant Phlebotomy Fulfillment Marketplace</span>
           </div>

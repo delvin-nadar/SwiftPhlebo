@@ -1,0 +1,559 @@
+import { Lab, Zone, Phlebotomist, Order, PayoutRecord, AuthUser } from '../types';
+
+export const DEMO_USERS: (AuthUser & { password: string })[] = [
+  {
+    id: 'user-lab-a',
+    email: 'lab_a@swiftphlebo.in',
+    password: 'password123',
+    name: 'Vijaya Diagnostics (Vizag Lab Hub)',
+    role: 'lab',
+    labId: 'LAB-A',
+    labName: 'Vijaya Diagnostics Vizag',
+    token: 'token_lab_a_vijaya_sec99182'
+  },
+  {
+    id: 'user-lab-b',
+    email: 'lab_b@swiftphlebo.in',
+    password: 'password123',
+    name: 'Apollo Diagnostics (Waltair Hub)',
+    role: 'lab',
+    labId: 'LAB-B',
+    labName: 'Apollo Diagnostics Vizag',
+    token: 'token_lab_b_apollo_sec44810'
+  },
+  {
+    id: 'user-lab-c',
+    email: 'lab_c@swiftphlebo.in',
+    password: 'password123',
+    name: 'Care Diagnostics (Maharanipeta Hub)',
+    role: 'lab',
+    labId: 'LAB-C',
+    labName: 'Care Diagnostics Vizag',
+    token: 'token_lab_c_care_sec77291'
+  },
+  {
+    id: 'user-phlebo-1',
+    email: 'phlebo1@swiftphlebo.in',
+    password: 'password123',
+    name: 'Suresh Naidu (DMLT)',
+    role: 'phlebotomist',
+    phlebotomistId: 'PHL-1',
+    token: 'token_phlebo_1_suresh_sec11029'
+  },
+  {
+    id: 'user-phlebo-2',
+    email: 'phlebo2@swiftphlebo.in',
+    password: 'password123',
+    name: 'Anand Rao (DMLT)',
+    role: 'phlebotomist',
+    phlebotomistId: 'PHL-2',
+    token: 'token_phlebo_2_anand_sec22941'
+  },
+  {
+    id: 'user-phlebo-3',
+    email: 'phlebo3@swiftphlebo.in',
+    password: 'password123',
+    name: 'Priya Varma (B.Sc MLT)',
+    role: 'phlebotomist',
+    phlebotomistId: 'PHL-3',
+    token: 'token_phlebo_3_priya_sec33819'
+  },
+  {
+    id: 'user-phlebo-4',
+    email: 'phlebo4@swiftphlebo.in',
+    password: 'password123',
+    name: 'Kalyan Kumar (DMLT)',
+    role: 'phlebotomist',
+    phlebotomistId: 'PHL-4',
+    token: 'token_phlebo_4_kalyan_sec44192'
+  },
+  {
+    id: 'user-admin',
+    email: 'admin@swiftphlebo.in',
+    password: 'password123',
+    name: 'Vizag Central Operations Admin',
+    role: 'admin',
+    token: 'token_admin_super_sec99901'
+  }
+];
+
+export const VIZAG_ZONES: Zone[] = [
+  {
+    id: 'zone-mvp',
+    name: 'MVP Colony & Beach Road',
+    pincodes: ['530017', '530003', '530022', '530002'],
+    description: 'Covers MVP Sector 1-12, Lawson’s Bay Colony, Beach Road, Ushodaya, and Pandurangapuram.',
+    centerCoordinates: { lat: 17.7397, lng: 83.3364 }
+  },
+  {
+    id: 'zone-dwaraka',
+    name: 'Dwaraka Nagar & Siripuram',
+    pincodes: ['530016', '530004', '530001', '530020'],
+    description: 'Covers Dwaraka Nagar, Siripuram Junction, VIP Road, Asilmetta, RTC Complex, and Waltair Uplands.',
+    centerCoordinates: { lat: 17.7265, lng: 83.3087 }
+  },
+  {
+    id: 'zone-gajuwaka',
+    name: 'Gajuwaka & Steel Plant',
+    pincodes: ['530026', '530031', '530044', '530012'],
+    description: 'Covers Old Gajuwaka, New Gajuwaka, Kurmannapalem, Steel Plant Township, and Auto Nagar.',
+    centerCoordinates: { lat: 17.6908, lng: 83.2095 }
+  },
+  {
+    id: 'zone-madhurawada',
+    name: 'Madhurawada & Rushikonda',
+    pincodes: ['530041', '530048', '530045', '530052'],
+    description: 'Covers Madhurawada, Rushikonda IT Hill, Yendada, PM Palem, Kommadi, and Cricket Stadium area.',
+    centerCoordinates: { lat: 17.8016, lng: 83.3524 }
+  },
+  {
+    id: 'zone-pendurthi',
+    name: 'Pendurthi & NAD Junction',
+    pincodes: ['530051', '530027', '530009', '530018'],
+    description: 'Covers NAD Kotha Road, Gopalapatnam, Simhachalam foothill, Pendurthi, and Marripalem.',
+    centerCoordinates: { lat: 17.7538, lng: 83.2389 }
+  }
+];
+
+export const INITIAL_LABS: Lab[] = [
+  {
+    id: 'LAB-A',
+    code: 'LAB-A',
+    name: 'Vijaya Diagnostics Vizag',
+    badge: 'NABL Accredited Regional Hub',
+    address: 'Plot 42, Sector 3, MVP Colony, Visakhapatnam',
+    locality: 'MVP Colony',
+    phone: '+91 891 278 4400',
+    email: 'lab_a@swiftphlebo.in',
+    status: 'active',
+    rating: 4.9,
+    totalOrders: 142
+  },
+  {
+    id: 'LAB-B',
+    code: 'LAB-B',
+    name: 'Apollo Diagnostics Vizag',
+    badge: 'CAP Certified Central Lab',
+    address: 'Opp. Seven Hills Hospital, Waltair Main Road, Visakhapatnam',
+    locality: 'Dwaraka Nagar',
+    phone: '+91 891 255 1212',
+    email: 'lab_b@swiftphlebo.in',
+    status: 'active',
+    rating: 4.8,
+    totalOrders: 98
+  },
+  {
+    id: 'LAB-C',
+    code: 'LAB-C',
+    name: 'Care Diagnostics Vizag',
+    badge: 'ISO 15189 Certified Lab',
+    address: 'Maharanipeta, Near KGH Down Road, Visakhapatnam',
+    locality: 'Maharanipeta',
+    phone: '+91 891 273 9900',
+    email: 'lab_c@swiftphlebo.in',
+    status: 'active',
+    rating: 4.7,
+    totalOrders: 64
+  }
+];
+
+export const INITIAL_PHLEBOTOMISTS: Phlebotomist[] = [
+  {
+    id: 'PHL-1',
+    name: 'Suresh Naidu',
+    phone: '+91 98491 55210',
+    email: 'phlebo1@swiftphlebo.in',
+    photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=300&auto=format&fit=crop&q=80',
+    certification: 'DMLT - Andhra Medical College (AMC Vizag)',
+    homeZoneId: 'zone-mvp',
+    onDuty: true,
+    currentLoadToday: 2,
+    rating: 4.95,
+    ratingCount: 148,
+    travelRadiusKm: 12,
+    completedOrdersCount: 420,
+    earningsToday: 720,
+    totalEarnings: 48900,
+    vehicleType: 'Bike',
+    vehicleNumber: 'AP 39 CK 4589'
+  },
+  {
+    id: 'PHL-2',
+    name: 'Anand Rao',
+    phone: '+91 98480 33412',
+    email: 'phlebo2@swiftphlebo.in',
+    photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=300&auto=format&fit=crop&q=80',
+    certification: 'DMLT - King George Hospital Training Wing',
+    homeZoneId: 'zone-dwaraka',
+    onDuty: true,
+    currentLoadToday: 2,
+    rating: 4.88,
+    ratingCount: 112,
+    travelRadiusKm: 10,
+    completedOrdersCount: 310,
+    earningsToday: 680,
+    totalEarnings: 39500,
+    vehicleType: 'Scooter',
+    vehicleNumber: 'AP 31 EA 1289'
+  },
+  {
+    id: 'PHL-3',
+    name: 'Priya Varma',
+    phone: '+91 94401 77890',
+    email: 'phlebo3@swiftphlebo.in',
+    photo: 'https://images.unsplash.com/photo-1594824813689-5309d94a11f7?w=300&auto=format&fit=crop&q=80',
+    certification: 'B.Sc Medical Laboratory Technology (NTRUHS)',
+    homeZoneId: 'zone-madhurawada',
+    onDuty: true,
+    currentLoadToday: 1,
+    rating: 4.98,
+    ratingCount: 185,
+    travelRadiusKm: 14,
+    completedOrdersCount: 540,
+    earningsToday: 380,
+    totalEarnings: 61200,
+    vehicleType: 'Scooter',
+    vehicleNumber: 'AP 39 BZ 7721'
+  },
+  {
+    id: 'PHL-4',
+    name: 'Kalyan Kumar',
+    phone: '+91 98665 44321',
+    email: 'phlebo4@swiftphlebo.in',
+    photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
+    certification: 'DMLT - Govt Polytechnic Lab Sciences',
+    homeZoneId: 'zone-gajuwaka',
+    onDuty: false,
+    currentLoadToday: 0,
+    rating: 4.75,
+    ratingCount: 89,
+    travelRadiusKm: 15,
+    completedOrdersCount: 215,
+    earningsToday: 0,
+    totalEarnings: 27400,
+    vehicleType: 'Bike',
+    vehicleNumber: 'AP 39 DZ 9043'
+  }
+];
+
+export const INITIAL_ORDERS: Order[] = [
+  // LAB A ORDERS
+  {
+    id: 'SWP-A01',
+    labId: 'LAB-A',
+    labName: 'Vijaya Diagnostics Vizag',
+    patientName: 'Ramesh Chandra Raju',
+    patientPhone: '+91 98491 55210',
+    patientAge: 54,
+    patientGender: 'Male',
+    address: 'Flat 302, Sagar View Towers, Ushodaya Junction',
+    locality: 'MVP Colony Sector 4',
+    pincode: '530017',
+    zoneId: 'zone-mvp',
+    zoneName: 'MVP Colony & Beach Road',
+    requestedDate: '2026-08-24',
+    requestedSlot: '07:00 - 08:00',
+    requiredVials: ['EDTA', 'Serum', 'Fluoride'],
+    assignedPhlebotomistId: 'PHL-1',
+    assignedPhlebotomistName: 'Suresh Naidu (DMLT)',
+    assignedPhlebotomistPhone: '+91 98491 55210',
+    status: 'Sample Collected',
+    notes: 'Elderly patient with fragile veins. Handled by senior technician.',
+    scanned_barcodes: ['VIJ-EDTA-8921', 'VIJ-SERUM-8922', 'VIJ-FLUOR-8923'],
+    sample_photo_url: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?w=600&auto=format&fit=crop&q=80',
+    sampleVialsBarcodes: ['VIJ-EDTA-8921', 'VIJ-SERUM-8922', 'VIJ-FLUOR-8923'],
+    temperatureBoxRecorded: '3.4°C Cold Box',
+    createdTimestamp: '2026-08-24T05:30:00.000Z',
+    updatedTimestamp: '2026-08-24T07:25:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T05:30:00Z', description: 'Order created by Vijaya Diagnostics for home specimen pickup', actor: 'Lab Dispatch' },
+      { status: 'Assigned', timestamp: '2026-08-24T06:05:00Z', description: 'Assigned to Suresh Naidu (MVP Zone)', actor: 'System Auto-Dispatch' },
+      { status: 'Accepted', timestamp: '2026-08-24T06:12:00Z', description: 'Suresh Naidu accepted collection slot', actor: 'Phlebotomist' },
+      { status: 'En Route', timestamp: '2026-08-24T06:55:00Z', description: 'Technician on way to Ushodaya Junction', actor: 'Phlebotomist' },
+      { status: 'Sample Collected', timestamp: '2026-08-24T07:25:00Z', description: '3 vials drawn: EDTA, Serum, Fluoride. Barcodes logged. Box temp 3.4°C. Photographic custody verified.', actor: 'Phlebotomist' }
+    ]
+  },
+  {
+    id: 'SWP-A02',
+    labId: 'LAB-A',
+    labName: 'Vijaya Diagnostics Vizag',
+    patientName: 'Lakshmi Prasanna',
+    patientPhone: '+91 99890 22114',
+    patientAge: 42,
+    patientGender: 'Female',
+    address: 'D.No 4-55/2, Lawson’s Bay Colony Road',
+    locality: 'Lawson’s Bay',
+    pincode: '530017',
+    zoneId: 'zone-mvp',
+    zoneName: 'MVP Colony & Beach Road',
+    requestedDate: '2026-08-24',
+    requestedSlot: '08:00 - 09:00',
+    requiredVials: ['Serum', 'Urine'],
+    assignedPhlebotomistId: 'PHL-1',
+    assignedPhlebotomistName: 'Suresh Naidu (DMLT)',
+    assignedPhlebotomistPhone: '+91 98491 55210',
+    status: 'En Route',
+    notes: 'Please bring sterile urine cup with seal.',
+    createdTimestamp: '2026-08-24T06:15:00.000Z',
+    updatedTimestamp: '2026-08-24T08:05:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T06:15:00Z', description: 'Order created by Vijaya Diagnostics', actor: 'Lab Dispatch' },
+      { status: 'Assigned', timestamp: '2026-08-24T06:40:00Z', description: 'Assigned to Suresh Naidu', actor: 'System Auto-Dispatch' },
+      { status: 'Accepted', timestamp: '2026-08-24T06:45:00Z', description: 'Suresh Naidu accepted collection slot', actor: 'Phlebotomist' },
+      { status: 'En Route', timestamp: '2026-08-24T08:05:00Z', description: 'Technician on way to Lawson’s Bay', actor: 'Phlebotomist' }
+    ]
+  },
+  {
+    id: 'SWP-A03',
+    labId: 'LAB-A',
+    labName: 'Vijaya Diagnostics Vizag',
+    patientName: 'K. Venkat Rao',
+    patientPhone: '+91 94412 88765',
+    patientAge: 61,
+    patientGender: 'Male',
+    address: 'House 12-B, Sector 9, MVP Colony',
+    locality: 'MVP Colony',
+    pincode: '530017',
+    zoneId: 'zone-mvp',
+    zoneName: 'MVP Colony & Beach Road',
+    requestedDate: '2026-08-24',
+    requestedSlot: '09:00 - 10:00',
+    requiredVials: ['Fluoride', 'Fluoride PP', 'Serum'],
+    assignedPhlebotomistId: 'PHL-1',
+    assignedPhlebotomistName: 'Suresh Naidu (DMLT)',
+    assignedPhlebotomistPhone: '+91 98491 55210',
+    status: 'Accepted',
+    notes: 'Fasting specimen at 09:00 AM; PP sample 2 hours later.',
+    createdTimestamp: '2026-08-24T06:45:00.000Z',
+    updatedTimestamp: '2026-08-24T07:10:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T06:45:00Z', description: 'Order created by Vijaya Diagnostics', actor: 'Lab Dispatch' },
+      { status: 'Assigned', timestamp: '2026-08-24T07:05:00Z', description: 'Assigned to Suresh Naidu', actor: 'System Auto-Dispatch' },
+      { status: 'Accepted', timestamp: '2026-08-24T07:10:00Z', description: 'Accepted by Suresh Naidu', actor: 'Phlebotomist' }
+    ]
+  },
+
+  // LAB B ORDERS
+  {
+    id: 'SWP-B01',
+    labId: 'LAB-B',
+    labName: 'Apollo Diagnostics Vizag',
+    patientName: 'Dr. Srinivas Patnaik',
+    patientPhone: '+91 98488 99001',
+    patientAge: 48,
+    patientGender: 'Male',
+    address: 'Flat 501, Royal Residency, VIP Road',
+    locality: 'Siripuram',
+    pincode: '530003',
+    zoneId: 'zone-dwaraka',
+    zoneName: 'Dwaraka Nagar & Siripuram',
+    requestedDate: '2026-08-24',
+    requestedSlot: '06:00 - 07:00',
+    requiredVials: ['EDTA', 'Serum'],
+    assignedPhlebotomistId: 'PHL-2',
+    assignedPhlebotomistName: 'Anand Rao (DMLT)',
+    assignedPhlebotomistPhone: '+91 98480 33412',
+    status: 'Handed to Lab',
+    scanned_barcodes: ['APO-EDTA-3011', 'APO-SERUM-3012'],
+    sample_photo_url: 'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=600&auto=format&fit=crop&q=80',
+    handover_photo_url: 'https://images.unsplash.com/photo-1581595220892-b0739db3ba8c?w=600&auto=format&fit=crop&q=80',
+    sampleVialsBarcodes: ['APO-EDTA-3011', 'APO-SERUM-3012'],
+    temperatureBoxRecorded: '4.1°C Cold Box',
+    notes: 'VIP Doctor client. Handover completed at Apollo Waltair Lab desk.',
+    createdTimestamp: '2026-08-24T05:00:00.000Z',
+    updatedTimestamp: '2026-08-24T07:15:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T05:00:00Z', description: 'Order logged by Apollo Diagnostics Hub', actor: 'Lab Dispatch' },
+      { status: 'Assigned', timestamp: '2026-08-24T05:15:00Z', description: 'Assigned to Anand Rao (Dwaraka Zone)', actor: 'System Auto-Dispatch' },
+      { status: 'Accepted', timestamp: '2026-08-24T05:20:00Z', description: 'Anand Rao accepted', actor: 'Phlebotomist' },
+      { status: 'En Route', timestamp: '2026-08-24T06:00:00Z', description: 'En route to VIP Road', actor: 'Phlebotomist' },
+      { status: 'Sample Collected', timestamp: '2026-08-24T06:30:00Z', description: 'Samples drawn into EDTA & SST Serum vials [2 Barcodes Scanned] [Sample Photo Verified]', actor: 'Phlebotomist' },
+      { status: 'Handed to Lab', timestamp: '2026-08-24T07:15:00Z', description: 'Vials handed over to Apollo Waltair Central Lab receiving tech [Lab Handover Photo Verified]', actor: 'Phlebotomist' }
+    ]
+  },
+  {
+    id: 'SWP-B02',
+    labId: 'LAB-B',
+    labName: 'Apollo Diagnostics Vizag',
+    patientName: 'Ananya Varma',
+    patientPhone: '+91 97003 44556',
+    patientAge: 29,
+    patientGender: 'Female',
+    address: 'Door 10-2-18, Asilmetta Junction Road',
+    locality: 'Asilmetta',
+    pincode: '530003',
+    zoneId: 'zone-dwaraka',
+    zoneName: 'Dwaraka Nagar & Siripuram',
+    requestedDate: '2026-08-24',
+    requestedSlot: '08:00 - 09:00',
+    requiredVials: ['Serum', 'EDTA', 'Urine'],
+    assignedPhlebotomistId: 'PHL-2',
+    assignedPhlebotomistName: 'Anand Rao (DMLT)',
+    assignedPhlebotomistPhone: '+91 98480 33412',
+    status: 'Sample Collected',
+    notes: 'Call 10 mins before arrival.',
+    scanned_barcodes: ['APO-SR-4410', 'APO-ED-4411', 'APO-UR-4412'],
+    sample_photo_url: 'https://images.unsplash.com/photo-1615461066841-6116e61058f4?w=600&auto=format&fit=crop&q=80',
+    sampleVialsBarcodes: ['APO-SR-4410', 'APO-ED-4411', 'APO-UR-4412'],
+    temperatureBoxRecorded: '3.9°C Cold Box',
+    createdTimestamp: '2026-08-24T06:20:00.000Z',
+    updatedTimestamp: '2026-08-24T08:35:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T06:20:00Z', description: 'Order created by Apollo Diagnostics', actor: 'Lab Dispatch' },
+      { status: 'Assigned', timestamp: '2026-08-24T06:35:00Z', description: 'Assigned to Anand Rao', actor: 'System Auto-Dispatch' },
+      { status: 'Accepted', timestamp: '2026-08-24T06:40:00Z', description: 'Accepted by Anand Rao', actor: 'Phlebotomist' },
+      { status: 'En Route', timestamp: '2026-08-24T08:05:00Z', description: 'En route to Asilmetta', actor: 'Phlebotomist' },
+      { status: 'Sample Collected', timestamp: '2026-08-24T08:35:00Z', description: 'Specimens safely drawn and cold-stored [3 Barcodes Scanned] [Sample Photo Verified]', actor: 'Phlebotomist' }
+    ]
+  },
+  {
+    id: 'SWP-B03',
+    labId: 'LAB-B',
+    labName: 'Apollo Diagnostics Vizag',
+    patientName: 'G. Mohan Krishna',
+    patientPhone: '+91 93930 11223',
+    patientAge: 38,
+    patientGender: 'Male',
+    address: 'Near Diamond Park, Dwaraka Nagar 3rd Lane',
+    locality: 'Dwaraka Nagar',
+    pincode: '530016',
+    zoneId: 'zone-dwaraka',
+    zoneName: 'Dwaraka Nagar & Siripuram',
+    requestedDate: '2026-08-24',
+    requestedSlot: '10:00 - 11:00',
+    requiredVials: ['Fluoride', 'Fluoride PP'],
+    status: 'Pending',
+    notes: 'Patient requesting morning blood glucose profile.',
+    createdTimestamp: '2026-08-24T07:15:00.000Z',
+    updatedTimestamp: '2026-08-24T07:15:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T07:15:00Z', description: 'Order created by Apollo Diagnostics', actor: 'Lab Dispatch' }
+    ]
+  },
+
+  // LAB C ORDERS
+  {
+    id: 'SWP-C01',
+    labId: 'LAB-C',
+    labName: 'Care Diagnostics Vizag',
+    patientName: 'B. Satyanarayana',
+    patientPhone: '+91 98495 66778',
+    patientAge: 67,
+    patientGender: 'Male',
+    address: 'Plot 88, IT Hill View Layout, Rushikonda',
+    locality: 'Madhurawada',
+    pincode: '530045',
+    zoneId: 'zone-madhurawada',
+    zoneName: 'Madhurawada & Rushikonda',
+    requestedDate: '2026-08-24',
+    requestedSlot: '06:00 - 07:00',
+    requiredVials: ['Serum', 'EDTA', 'Fluoride'],
+    assignedPhlebotomistId: 'PHL-3',
+    assignedPhlebotomistName: 'Priya Varma (B.Sc MLT)',
+    assignedPhlebotomistPhone: '+91 94401 77890',
+    status: 'Sample Collected',
+    notes: 'Patient bedridden on 2nd floor (has elevator).',
+    scanned_barcodes: ['CARE-SR-1102', 'CARE-ED-1103', 'CARE-FL-1104'],
+    sample_photo_url: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?w=600&auto=format&fit=crop&q=80',
+    sampleVialsBarcodes: ['CARE-SR-1102', 'CARE-ED-1103', 'CARE-FL-1104'],
+    temperatureBoxRecorded: '3.6°C Cold Box',
+    createdTimestamp: '2026-08-24T05:10:00.000Z',
+    updatedTimestamp: '2026-08-24T06:50:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T05:10:00Z', description: 'Order created by Care Diagnostics', actor: 'Lab Dispatch' },
+      { status: 'Assigned', timestamp: '2026-08-24T05:25:00Z', description: 'Assigned to Priya Varma (Madhurawada Zone)', actor: 'System Auto-Dispatch' },
+      { status: 'Accepted', timestamp: '2026-08-24T05:30:00Z', description: 'Priya Varma accepted', actor: 'Phlebotomist' },
+      { status: 'En Route', timestamp: '2026-08-24T06:15:00Z', description: 'En route to Rushikonda', actor: 'Phlebotomist' },
+      { status: 'Sample Collected', timestamp: '2026-08-24T06:50:00Z', description: '3 vials drawn smoothly. Cold pack active [3 Barcodes Scanned] [Sample Photo Verified].', actor: 'Phlebotomist' }
+    ]
+  },
+  {
+    id: 'SWP-C02',
+    labId: 'LAB-C',
+    labName: 'Care Diagnostics Vizag',
+    patientName: 'Meera Chidambaram',
+    patientPhone: '+91 91778 33221',
+    patientAge: 35,
+    patientGender: 'Female',
+    address: 'Flat G-2, Hill Crest Apts, PM Palem Last Bus Stop',
+    locality: 'Madhurawada',
+    pincode: '530041',
+    zoneId: 'zone-madhurawada',
+    zoneName: 'Madhurawada & Rushikonda',
+    requestedDate: '2026-08-24',
+    requestedSlot: '09:00 - 10:00',
+    requiredVials: ['Urine', 'Serum'],
+    status: 'Pending',
+    notes: 'Morning specimen pickup requested.',
+    createdTimestamp: '2026-08-24T07:00:00.000Z',
+    updatedTimestamp: '2026-08-24T07:00:00.000Z',
+    timeline: [
+      { status: 'Pending', timestamp: '2026-08-24T07:00:00Z', description: 'Order logged by Care Diagnostics Hub', actor: 'Lab Dispatch' }
+    ]
+  }
+];
+
+export const INITIAL_PAYOUTS: PayoutRecord[] = [
+  {
+    id: 'PAY-101',
+    phlebotomistId: 'PHL-1',
+    phlebotomistName: 'Suresh Naidu',
+    orderId: 'SWP-A01',
+    date: '2026-08-24',
+    basePay: 180,
+    morningIncentive: 50,
+    distanceBonus: 40,
+    totalPay: 270,
+    status: 'Paid',
+    paymentRef: 'UPI/20260824/782190'
+  },
+  {
+    id: 'PAY-102',
+    phlebotomistId: 'PHL-1',
+    phlebotomistName: 'Suresh Naidu',
+    orderId: 'SWP-A02',
+    date: '2026-08-24',
+    basePay: 180,
+    morningIncentive: 50,
+    distanceBonus: 20,
+    totalPay: 250,
+    status: 'Pending'
+  },
+  {
+    id: 'PAY-103',
+    phlebotomistId: 'PHL-2',
+    phlebotomistName: 'Anand Rao',
+    orderId: 'SWP-B01',
+    date: '2026-08-24',
+    basePay: 180,
+    morningIncentive: 75,
+    distanceBonus: 30,
+    totalPay: 285,
+    status: 'Paid',
+    paymentRef: 'UPI/20260824/881245'
+  },
+  {
+    id: 'PAY-104',
+    phlebotomistId: 'PHL-2',
+    phlebotomistName: 'Anand Rao',
+    orderId: 'SWP-B02',
+    date: '2026-08-24',
+    basePay: 180,
+    morningIncentive: 50,
+    distanceBonus: 20,
+    totalPay: 250,
+    status: 'Pending'
+  },
+  {
+    id: 'PAY-105',
+    phlebotomistId: 'PHL-3',
+    phlebotomistName: 'Priya Varma',
+    orderId: 'SWP-C01',
+    date: '2026-08-24',
+    basePay: 180,
+    morningIncentive: 75,
+    distanceBonus: 50,
+    totalPay: 305,
+    status: 'Pending'
+  }
+];

@@ -10,6 +10,7 @@ import {
   MapPin,
   RefreshCw,
   Lock,
+  LogOut,
   ChevronDown,
   Sparkles,
   Share2
@@ -33,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
     switchUser,
     demoUsers,
     phlebotomists,
-    orders,
+    logout,
     resetToDefaultData
   } = useApp();
 
@@ -51,8 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center space-x-3">
               <div
                 id="brand-logo"
-                className="flex items-center space-x-2.5 cursor-pointer"
-                onClick={() => switchRole('lab')}
+                className="flex items-center space-x-2.5"
               >
                 <div className="w-10 h-10 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-slate-950 font-black text-xl tracking-tight">
                   <Activity className="w-6 h-6 text-slate-950 stroke-[2.5]" />
@@ -81,99 +81,92 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {/* Role Switcher Tabs (Lab / Phlebo / Admin) */}
-            <div className="flex items-center space-x-1 bg-slate-950/80 p-1 rounded-2xl border border-slate-800">
-              
-              {/* Lab Portal */}
-              <button
-                id="role-lab-btn"
-                onClick={() => switchRole('lab')}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  currentRole === 'lab'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                <span>Lab Portal</span>
-              </button>
+            {/* Authenticated Tenant Badge / Role Lock Indicator */}
+            {currentRole === 'lab' && (
+              <div className="flex items-center space-x-2 bg-emerald-950/70 border border-emerald-500/40 px-3 py-1.5 rounded-2xl">
+                <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className="text-left">
+                  <div className="text-xs font-bold text-emerald-200">{currentUser.name}</div>
+                  <div className="text-[10px] text-emerald-400/80 font-mono font-semibold">
+                    Tenant Partition: {currentUser.labId} • Private Workspace
+                  </div>
+                </div>
+              </div>
+            )}
 
-              {/* Phlebotomist Portal */}
-              <button
-                id="role-phlebo-btn"
-                onClick={() => switchRole('phlebotomist')}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  currentRole === 'phlebotomist'
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Phlebotomist</span>
-              </button>
+            {currentRole === 'phlebotomist' && (
+              <div className="flex items-center space-x-2 bg-teal-950/70 border border-teal-500/40 px-3 py-1.5 rounded-2xl">
+                <UserCheck className="w-4 h-4 text-teal-400 shrink-0" />
+                <div className="text-left">
+                  <div className="text-xs font-bold text-teal-200">{currentUser.name}</div>
+                  <div className="text-[10px] text-teal-400/80 font-mono font-semibold">
+                    Phlebotomist ID: {currentUser.phlebotomistId} • Mobile Task Console
+                  </div>
+                </div>
+              </div>
+            )}
 
-              {/* Admin Portal */}
-              <button
-                id="role-admin-btn"
-                onClick={() => switchRole('admin')}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  currentRole === 'admin'
-                    ? 'bg-slate-800 text-amber-400 border border-amber-400/40 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Admin Ops</span>
-              </button>
-            </div>
+            {currentRole === 'admin' && (
+              <div className="flex items-center space-x-2 bg-amber-950/70 border border-amber-500/40 px-3 py-1.5 rounded-2xl">
+                <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="text-left">
+                  <div className="text-xs font-bold text-amber-200">Vizag Central Operations</div>
+                  <div className="text-[10px] text-amber-400/80 font-mono font-semibold">
+                    Super Admin Dispatch & Governance
+                  </div>
+                </div>
+              </div>
+            )}
 
-            {/* Right-Side Actions: Quick Tenant Switcher & Security Verifier */}
+            {/* Right-Side Actions: Share, Security Audit & Logout */}
             <div className="flex items-center space-x-2">
               
-              {/* Quick Tenant Switcher Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowTenantDropdown(!showTenantDropdown)}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-mono font-bold text-slate-200 transition-colors"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  <span className="max-w-[110px] truncate">{currentUser.name}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                </button>
+              {/* Only Central Operations Admin has developer inspection switcher */}
+              {currentRole === 'admin' && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowTenantDropdown(!showTenantDropdown)}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-mono font-bold text-slate-200 transition-colors"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span className="max-w-[110px] truncate">Admin Switcher</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
 
-                {showTenantDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-50 text-xs animate-in fade-in">
-                    <div className="px-3 py-2 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-800">
-                      Switch Authenticated Identity:
-                    </div>
+                  {showTenantDropdown && (
+                    <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-50 text-xs animate-in fade-in">
+                      <div className="px-3 py-2 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-800">
+                        Admin Impersonation / Inspection:
+                      </div>
 
-                    <div className="space-y-1 py-1">
-                      {demoUsers.map(u => (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            switchUser(u.id);
-                            setShowTenantDropdown(false);
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
-                            currentUser.id === u.id
-                              ? 'bg-emerald-600 text-white font-bold'
-                              : 'text-slate-300 hover:bg-slate-800'
-                          }`}
-                        >
-                          <div>
-                            <div className="font-bold">{u.name}</div>
-                            <div className="text-[10px] opacity-75 font-mono">
-                              {u.role.toUpperCase()} {u.labId ? `• ${u.labId}` : u.phlebotomistId ? `• ${u.phlebotomistId}` : ''}
+                      <div className="space-y-1 py-1">
+                        {demoUsers.map(u => (
+                          <button
+                            key={u.id}
+                            onClick={() => {
+                              switchUser(u.id);
+                              setShowTenantDropdown(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-colors ${
+                              currentUser.id === u.id
+                                ? 'bg-amber-600 text-white font-bold'
+                                : 'text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            <div>
+                              <div className="font-bold">{u.name}</div>
+                              <div className="text-[10px] opacity-75 font-mono">
+                                {u.role.toUpperCase()} {u.labId ? `• ${u.labId}` : u.phlebotomistId ? `• ${u.phlebotomistId}` : ''}
+                              </div>
                             </div>
-                          </div>
-                          {currentUser.id === u.id && <span className="text-xs">✓</span>}
-                        </button>
-                      ))}
+                            {currentUser.id === u.id && <span className="text-xs">✓</span>}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Share Portals Button */}
               <button
@@ -197,13 +190,15 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Security Audit</span>
               </button>
 
+              {/* Secure Log Out Button */}
               <button
-                id="reset-data-btn"
-                onClick={resetToDefaultData}
-                className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition-colors"
-                title="Reset Database to Clean Multi-Tenant State"
+                id="logout-btn"
+                onClick={logout}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-950 hover:text-red-300 hover:border-red-800 border border-slate-700 text-xs font-bold text-slate-300 transition-all shadow-sm"
+                title="Lock session & Log out"
               >
-                <RefreshCw className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Log Out</span>
               </button>
             </div>
 

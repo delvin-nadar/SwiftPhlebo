@@ -22,8 +22,10 @@ interface AppContextType {
   // Authentication & Tenant Identity
   currentUser: AuthUser;
   currentRole: UserRole;
+  isAuthenticated: boolean;
   demoUsers: AuthUser[];
   loginAsUser: (userIdOrEmail: string) => Promise<boolean>;
+  loginWithPassword: (userIdOrEmail: string, password: string) => Promise<{ success: boolean; error?: string }>;
   switchRole: (role: UserRole) => void;
   switchUser: (userId: string) => void;
   logout: () => void;
@@ -87,9 +89,26 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Default to Lab A on first load, or detect from ?portal= / ?user= / ?role= query parameters
+  // Determine if already authenticated in this browser session
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('swiftphlebo_authenticated_id') || sessionStorage.getItem('swiftphlebo_authenticated_id');
+      if (saved) return true;
+    } catch {
+      // Ignore
+    }
+    return false;
+  });
+
+  // Default to Lab A on first load, or detect from ?portal= / ?user= / ?role= query parameters or stored session
   const [currentUser, setCurrentUser] = useState<AuthUser>(() => {
     try {
+      const savedId = localStorage.getItem('swiftphlebo_authenticated_id') || sessionStorage.getItem('swiftphlebo_authenticated_id');
+      if (savedId) {
+        const savedUser = DEMO_USERS.find(u => u.id === savedId);
+        if (savedUser) return savedUser;
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       const portalParam = urlParams.get('portal') || urlParams.get('user') || urlParams.get('role');
       if (portalParam) {
@@ -227,13 +246,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchScopedData(currentUser);
   }, [currentUser, fetchScopedData]);
 
-  // Login as User
-  const loginAsUser = async (userIdOrEmail: string): Promise<boolean> => {
+  // Login with Password / PIN Verification
+  const loginWithPassword = async (userIdOrEmail: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userIdOrEmail, email: userIdOrEmail, password: 'password123' })
+        body: JSON.stringify({ userId: userIdOrEmail, email: userIdOrEmail, password })
       });
 
       if (res.ok) {
@@ -242,28 +261,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const data = await res.json();
           if (data && data.user) {
             setCurrentUser(data.user);
-            return true;
+            setIsAuthenticated(true);
+            try {
+              localStorage.setItem('swiftphlebo_authenticated_id', data.user.id);
+            } catch {
+              // ignore
+            }
+            return { success: true };
           }
         }
       }
-    } catch (err) {
-      console.warn('Backend login unavailable, using client fallback');
+    } catch {
+      // ignore backend error for client-side fallback
     }
 
-    // Fallback matching
+    // Client-side credentials check (for static / GitHub Pages deployment)
+    const normalizedInput = userIdOrEmail.trim().toLowerCase();
     const found = DEMO_USERS.find(
-      u => u.id === userIdOrEmail || u.email.toLowerCase() === userIdOrEmail.toLowerCase() || u.labId === userIdOrEmail || u.phlebotomistId === userIdOrEmail
+      u =>
+        u.id.toLowerCase() === normalizedInput ||
+        u.email.toLowerCase() === normalizedInput ||
+        u.labId?.toLowerCase() === normalizedInput ||
+        u.phlebotomistId?.toLowerCase() === normalizedInput ||
+        (normalizedInput === 'admin' && u.role === 'admin')
     );
-    if (found) {
-      setCurrentUser(found);
-      return true;
+
+    if (!found) {
+      return { success: false, error: 'Account or Tenant ID not recognized. Please check your credentials.' };
     }
-    return false;
+
+    const validPasswords = ['password123', '1234', 'admin123', '1122', found.password];
+    if (!validPasswords.includes(password.trim())) {
+      return { success: false, error: 'Invalid Password / PIN. Use "password123" or "1234".' };
+    }
+
+    setCurrentUser(found);
+    setIsAuthenticated(true);
+    try {
+      localStorage.setItem('swiftphlebo_authenticated_id', found.id);
+    } catch {
+      // ignore
+    }
+    return { success: true };
+  };
+
+  // Login as User
+  const loginAsUser = async (userIdOrEmail: string): Promise<boolean> => {
+    const res = await loginWithPassword(userIdOrEmail, 'password123');
+    return res.success;
   };
 
   const logout = () => {
-    // Default to Lab A on logout
-    setCurrentUser(DEMO_USERS[0]);
+    setIsAuthenticated(false);
+    try {
+      localStorage.removeItem('swiftphlebo_authenticated_id');
+      sessionStorage.removeItem('swiftphlebo_authenticated_id');
+    } catch {
+      // ignore
+    }
+    // Clean URL params if any
+    try {
+      if (window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   // Get Dynamic 06:00 - 11:00 Slot Availability from Server
@@ -645,8 +708,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentUser,
         currentRole,
+        isAuthenticated,
         demoUsers,
         loginAsUser,
+        loginWithPassword,
         switchRole,
         switchUser,
         logout,

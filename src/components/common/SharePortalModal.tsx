@@ -114,9 +114,12 @@ export const SharePortalModal: React.FC<SharePortalModalProps> = ({ isOpen, onCl
             <div className="space-y-3">
               <div className="bg-emerald-50 border border-emerald-200/60 rounded-2xl p-4 text-xs text-emerald-900">
                 <p className="font-semibold mb-1">🏥 Diagnostic Lab Direct Portals</p>
-                <p className="text-emerald-800/80">
-                  Each link automatically logs the client in to their private tenant workspace (isolated orders, home collection booking, cold-chain status).
+                <p className="text-emerald-800/80 mb-2">
+                  Each link pre-selects the client's private workspace. Clients enter their PIN / Password to authenticate.
                 </p>
+                <div className="inline-block bg-white/80 border border-emerald-300 px-2 py-1 rounded text-[11px] font-mono font-bold text-emerald-900">
+                  Default Demo Access: PIN "1234" or Password "password123"
+                </div>
               </div>
 
               {labUsers.map(lab => {

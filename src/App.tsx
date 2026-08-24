@@ -7,9 +7,10 @@ import { PhlebotomistPortal } from './components/phlebotomist/PhlebotomistPortal
 import { SecurityVerifierModal } from './components/security/SecurityVerifierModal';
 import { TrackOrderModal } from './components/patient/TrackOrderModal';
 import { SharePortalModal } from './components/common/SharePortalModal';
+import { LoginScreen } from './components/auth/LoginScreen';
 
 const MainContent: React.FC = () => {
-  const { currentRole, setActiveTrackingOrderId } = useApp();
+  const { currentRole, isAuthenticated, setActiveTrackingOrderId } = useApp();
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -17,6 +18,11 @@ const MainContent: React.FC = () => {
   const handleSelectTrackedOrder = (orderId: string) => {
     setActiveTrackingOrderId(orderId);
   };
+
+  // If user is not authenticated, show password / PIN authorization gate
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">

@@ -72,10 +72,10 @@ export const LiveOrderBoard: React.FC = () => {
     setSelectedPhleboId(firstOnDuty?.id || '');
   };
 
-  const handleConfirmAssign = (e: React.FormEvent) => {
+  const handleConfirmAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (assignModalOrder && selectedPhleboId) {
-      assignPhlebotomist(assignModalOrder.id, selectedPhleboId);
+      await assignPhlebotomist(assignModalOrder.id, selectedPhleboId);
       setAssignModalOrder(null);
     }
   };

@@ -9,7 +9,7 @@ import {
   INITIAL_ORDERS,
   INITIAL_PAYOUTS
 } from './src/data/mockData';
-import { Order, BookingSlot, AllowedVialType, ALLOWED_BOOKING_SLOTS, ALLOWED_VIAL_TYPES, AuthUser } from './src/types';
+import { Order, OrderStatus, BookingSlot, AllowedVialType, ALLOWED_BOOKING_SLOTS, ALLOWED_VIAL_TYPES, AuthUser } from './src/types';
 import { autoAssignPhlebotomist } from './src/utils/assignmentService';
 
 // In-Memory Database State for the Live Backend
@@ -17,7 +17,36 @@ let usersDb = [...DEMO_USERS];
 let labsDb = [...INITIAL_LABS];
 let zonesDb = [...VIZAG_ZONES];
 let phlebotomistsDb = [...INITIAL_PHLEBOTOMISTS];
-let ordersDb: Order[] = JSON.parse(JSON.stringify(INITIAL_ORDERS));
+
+// Sanitizer to enforce strict atomic relationship between status and assignedPhlebotomistId
+function sanitizeServerOrders(ordersList: Order[], phleboList: any[]): Order[] {
+  return ordersList.map(order => {
+    if (order.assignedPhlebotomistId) {
+      const phlebo = phleboList.find(p => p.id === order.assignedPhlebotomistId);
+      if (phlebo) {
+        return {
+          ...order,
+          assignedPhlebotomistName: phlebo.name,
+          assignedPhlebotomistPhone: phlebo.phone,
+          status: order.status === 'Pending' ? 'Assigned' : order.status
+        };
+      }
+    }
+    // If status is 'Assigned' but has no valid assignedPhlebotomistId, fallback to 'Pending'
+    if (order.status === 'Assigned' && !order.assignedPhlebotomistId) {
+      return {
+        ...order,
+        assignedPhlebotomistId: undefined,
+        assignedPhlebotomistName: undefined,
+        assignedPhlebotomistPhone: undefined,
+        status: 'Pending'
+      };
+    }
+    return order;
+  });
+}
+
+let ordersDb: Order[] = sanitizeServerOrders(JSON.parse(JSON.stringify(INITIAL_ORDERS)), phlebotomistsDb);
 let payoutsDb = [...INITIAL_PAYOUTS];
 let whatsappLogsDb: any[] = [];
 
@@ -418,12 +447,68 @@ async function startServer() {
     });
   });
 
-  // 4. PATCH /api/orders/:id/status - Update Order Status & Technician Checkpoints
+  // 4. PATCH /api/orders/:id/assign - Atomic Phlebotomist Assignment Endpoint (Admin / Dispatcher)
+  app.patch('/api/orders/:id/assign', requireAuth, (req: Request, res: Response) => {
+    const user: AuthUser = (req as any).user;
+    const orderId = req.params.id;
+    const { phlebotomistId, notes } = req.body;
+
+    if (!phlebotomistId) {
+      res.status(400).json({ error: 'Missing phlebotomistId in request body', statusCode: 400 });
+      return;
+    }
+
+    const orderIndex = ordersDb.findIndex(o => o.id.toUpperCase() === orderId.toUpperCase());
+    if (orderIndex === -1) {
+      res.status(404).json({ error: 'Order not found', statusCode: 404 });
+      return;
+    }
+
+    const phlebo = phlebotomistsDb.find(p => p.id === phlebotomistId);
+    if (!phlebo) {
+      res.status(404).json({ error: `Phlebotomist '${phlebotomistId}' not found`, statusCode: 404 });
+      return;
+    }
+
+    const existingOrder = ordersDb[orderIndex];
+    const nowIso = new Date().toISOString();
+
+    // STRICT ATOMIC GUARANTEE: Assign ID, Name, Phone and update status to 'Assigned'
+    const updatedOrder: Order = {
+      ...existingOrder,
+      assignedPhlebotomistId: phlebo.id,
+      assignedPhlebotomistName: phlebo.name,
+      assignedPhlebotomistPhone: phlebo.phone,
+      status: 'Assigned',
+      updatedTimestamp: nowIso,
+      timeline: [
+        ...existingOrder.timeline,
+        {
+          status: 'Assigned',
+          timestamp: nowIso,
+          description: notes || `Assigned to phlebotomist ${phlebo.name} (${phlebo.phone})`,
+          actor: user.name || 'System Admin'
+        }
+      ]
+    };
+
+    ordersDb[orderIndex] = updatedOrder;
+    phlebo.currentLoadToday = (phlebo.currentLoadToday || 0) + 1;
+
+    res.json({
+      success: true,
+      message: `Order #${orderId} successfully assigned to ${phlebo.name}`,
+      order: updatedOrder
+    });
+  });
+
+  // 5. PATCH /api/orders/:id/status - Update Order Status & Technician Checkpoints
   app.patch('/api/orders/:id/status', requireAuth, (req: Request, res: Response) => {
     const user: AuthUser = (req as any).user;
     const orderId = req.params.id;
     const {
       status,
+      assignedPhlebotomistId,
       scanned_barcodes,
       sample_photo_url,
       handover_photo_url,
@@ -453,9 +538,34 @@ async function startServer() {
 
     const nowIso = new Date().toISOString();
     const resolvedBarcodes = scanned_barcodes || sampleVialsBarcodes || existingOrder.scanned_barcodes || existingOrder.sampleVialsBarcodes;
+
+    let assignedId = existingOrder.assignedPhlebotomistId;
+    let assignedName = existingOrder.assignedPhlebotomistName;
+    let assignedPhone = existingOrder.assignedPhlebotomistPhone;
+
+    if (assignedPhlebotomistId) {
+      const phlebo = phlebotomistsDb.find(p => p.id === assignedPhlebotomistId);
+      if (phlebo) {
+        assignedId = phlebo.id;
+        assignedName = phlebo.name;
+        assignedPhone = phlebo.phone;
+      }
+    } else if (status === 'Pending') {
+      assignedId = undefined;
+      assignedName = undefined;
+      assignedPhone = undefined;
+    }
+
+    // Atomic rule check: If status is 'Assigned', ensure a valid assignedId is present
+    const resolvedStatus = status || existingOrder.status;
+    const finalStatus: OrderStatus = (resolvedStatus === 'Assigned' && !assignedId) ? 'Pending' : resolvedStatus;
+
     const updatedOrder: Order = {
       ...existingOrder,
-      status: status || existingOrder.status,
+      assignedPhlebotomistId: assignedId,
+      assignedPhlebotomistName: assignedName,
+      assignedPhlebotomistPhone: assignedPhone,
+      status: finalStatus,
       scanned_barcodes: resolvedBarcodes,
       sample_photo_url: sample_photo_url !== undefined ? sample_photo_url : existingOrder.sample_photo_url,
       handover_photo_url: handover_photo_url !== undefined ? handover_photo_url : existingOrder.handover_photo_url,
@@ -466,9 +576,9 @@ async function startServer() {
       timeline: [
         ...existingOrder.timeline,
         {
-          status: status || existingOrder.status,
+          status: finalStatus,
           timestamp: nowIso,
-          description: `Status updated to ${status}${temperatureBoxRecorded ? ` (${temperatureBoxRecorded})` : ''}${
+          description: `Status updated to ${finalStatus}${temperatureBoxRecorded ? ` (${temperatureBoxRecorded})` : ''}${
             resolvedBarcodes && resolvedBarcodes.length > 0 ? ` [${resolvedBarcodes.length} Barcodes Scanned]` : ''
           }${sample_photo_url ? ' [Sample Photo Verified]' : ''}${handover_photo_url ? ' [Lab Handover Photo Verified]' : ''}`,
           actor: user.name,

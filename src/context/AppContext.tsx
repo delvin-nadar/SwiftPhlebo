@@ -141,18 +141,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return null;
   });
 
+  // Helper to sanitize and link phlebotomist information to orders
+  const sanitizeOrdersList = (ordersList: Order[], phleboList: Phlebotomist[]): Order[] => {
+    return ordersList.map(order => {
+      // If order already has an assignedPhlebotomistId, ensure name and phone are linked
+      if (order.assignedPhlebotomistId) {
+        const phlebo = phleboList.find(p => p.id === order.assignedPhlebotomistId);
+        if (phlebo) {
+          return {
+            ...order,
+            assignedPhlebotomistName: phlebo.name,
+            assignedPhlebotomistPhone: phlebo.phone,
+            status: order.status === 'Pending' ? 'Assigned' : order.status
+          };
+        }
+      }
+      // If status is 'Assigned' but has no valid assignedPhlebotomistId, fallback to 'Pending'
+      if (order.status === 'Assigned' && !order.assignedPhlebotomistId) {
+        return {
+          ...order,
+          assignedPhlebotomistId: undefined,
+          assignedPhlebotomistName: undefined,
+          assignedPhlebotomistPhone: undefined,
+          status: 'Pending'
+        };
+      }
+      return order;
+    });
+  };
+
   // Master local store for orders to support static / GitHub Pages deployment
   const [allOrdersStore, setAllOrdersStore] = useState<Order[]>(() => {
     try {
       const cached = localStorage.getItem('swiftphlebo_orders');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return sanitizeOrdersList(parsed, INITIAL_PHLEBOTOMISTS);
+        }
       }
     } catch {
       // Ignore localStorage errors
     }
-    return JSON.parse(JSON.stringify(INITIAL_ORDERS));
+    return sanitizeOrdersList(JSON.parse(JSON.stringify(INITIAL_ORDERS)), INITIAL_PHLEBOTOMISTS);
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -186,14 +217,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [allOrdersStore]);
 
-  // Filter local store by role if backend is not available
+  // Filter local store by role if backend is not available (Strict Isolation)
   const getScopedLocalOrders = useCallback((user: AuthUser, store: Order[]) => {
     if (user.role === 'admin') {
       return store;
     } else if (user.role === 'lab' && user.labId) {
       return store.filter(o => o.labId === user.labId);
     } else if (user.role === 'phlebotomist' && user.phlebotomistId) {
-      return store.filter(o => o.assignedPhlebotomistId === user.phlebotomistId || o.status === 'Pending');
+      return store.filter(o => o.assignedPhlebotomistId === user.phlebotomistId);
     }
     return store;
   }, []);
@@ -503,7 +534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser.role === 'lab' && found.labId !== currentUser.labId) {
       return { success: false, error: 'Access denied: You can only view orders for your lab.', statusCode: 403 };
     }
-    if (currentUser.role === 'phlebotomist' && found.assignedPhlebotomistId !== currentUser.phlebotomistId && found.status !== 'Pending') {
+    if (currentUser.role === 'phlebotomist' && found.assignedPhlebotomistId !== currentUser.phlebotomistId) {
       return { success: false, error: 'Access denied: You are not assigned to this sample collection.', statusCode: 403 };
     }
 
@@ -515,6 +546,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     orderId: string,
     status: Order['status'],
     details?: {
+      assignedPhlebotomistId?: string;
       scanned_barcodes?: string[];
       sample_photo_url?: string;
       handover_photo_url?: string;
@@ -562,9 +594,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         locationNote: details?.locationNote
       };
 
+      let assignedId = order.assignedPhlebotomistId;
+      let assignedName = order.assignedPhlebotomistName;
+      let assignedPhone = order.assignedPhlebotomistPhone;
+
+      if (details?.assignedPhlebotomistId) {
+        const phlebo = phlebotomists.find(p => p.id === details.assignedPhlebotomistId);
+        if (phlebo) {
+          assignedId = phlebo.id;
+          assignedName = phlebo.name;
+          assignedPhone = phlebo.phone;
+        }
+      } else if (status === 'Pending') {
+        assignedId = undefined;
+        assignedName = undefined;
+        assignedPhone = undefined;
+      }
+
+      // Enforce atomic guarantee: if 'Assigned' but no technician, fall back to 'Pending'
+      const finalStatus: Order['status'] = (status === 'Assigned' && !assignedId) ? 'Pending' : status;
+
       return {
         ...order,
-        status,
+        assignedPhlebotomistId: assignedId,
+        assignedPhlebotomistName: assignedName,
+        assignedPhlebotomistPhone: assignedPhone,
+        status: finalStatus,
         scanned_barcodes: details?.scanned_barcodes || order.scanned_barcodes,
         sample_photo_url: details?.sample_photo_url || order.sample_photo_url,
         handover_photo_url: details?.handover_photo_url || order.handover_photo_url,
@@ -578,12 +633,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  // Assign Phlebotomist (Admin action)
+  // Assign Phlebotomist (Admin / Dispatcher action) - ATOMIC UPDATE
   const assignPhlebotomist = async (orderId: string, phlebotomistId: string): Promise<{ success: boolean; error?: string }> => {
     const phlebo = phlebotomists.find(p => p.id === phlebotomistId);
-    return updateOrderStatus(orderId, 'Assigned', {
-      notes: `Phlebotomist assigned: ${phlebo?.name || phlebotomistId}`
-    });
+    if (!phlebo) {
+      return { success: false, error: `Phlebotomist '${phlebotomistId}' not found.` };
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/assign`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`,
+          'x-user-id': currentUser.id
+        },
+        body: JSON.stringify({
+          phlebotomistId: phlebo.id,
+          notes: `Manually assigned to phlebotomist ${phlebo.name}`
+        })
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.success) {
+          await fetchScopedData(currentUser);
+          return { success: true };
+        }
+      }
+    } catch {
+      // Backend not reachable, fall back to local update
+    }
+
+    // Local atomic state update
+    const nowIso = new Date().toISOString();
+    const newTimelineItem = {
+      status: 'Assigned' as const,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      description: `Manually assigned to ${phlebo.name} (${phlebo.phone})`,
+      actor: currentUser.name || 'Admin'
+    };
+
+    setAllOrdersStore(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      return {
+        ...order,
+        assignedPhlebotomistId: phlebo.id,
+        assignedPhlebotomistName: phlebo.name,
+        assignedPhlebotomistPhone: phlebo.phone,
+        status: 'Assigned',
+        timeline: [...(order.timeline || []), newTimelineItem],
+        updatedTimestamp: nowIso
+      };
+    }));
+
+    setPhlebotomists(prev => prev.map(p => {
+      if (p.id === phlebo.id) {
+        return { ...p, currentLoadToday: (p.currentLoadToday || 0) + 1 };
+      }
+      return p;
+    }));
+
+    return { success: true };
   };
 
   // Toggle Phlebotomist Duty (PATCH /api/phlebotomists/:id/duty)

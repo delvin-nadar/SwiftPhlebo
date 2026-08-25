@@ -10,6 +10,7 @@ import {
   INITIAL_PAYOUTS
 } from './src/data/mockData';
 import { Order, BookingSlot, AllowedVialType, ALLOWED_BOOKING_SLOTS, ALLOWED_VIAL_TYPES, AuthUser } from './src/types';
+import { autoAssignPhlebotomist } from './src/utils/assignmentService';
 
 // In-Memory Database State for the Live Backend
 let usersDb = [...DEMO_USERS];
@@ -299,17 +300,17 @@ async function startServer() {
       return;
     }
 
-    // Check dynamic capacity
+    // Check dynamic capacity for zone and time slot
     const zone = zonesDb.find(z => z.id === zoneId) || zonesDb[0];
-    const onDutyPhlebos = phlebotomistsDb.filter(p => p.onDuty && (p.homeZoneId === zone.id || true));
-    const totalSlotCapacity = Math.max(1, onDutyPhlebos.length * 2);
+    const onDutyPhlebosInZone = phlebotomistsDb.filter(p => p.onDuty && p.homeZoneId === zone.id);
+    const totalSlotCapacity = Math.max(1, onDutyPhlebosInZone.length * 1); // 1 order per slot per on-duty technician
     const existingSlotBookings = ordersDb.filter(
       o => o.zoneId === zone.id && o.requestedDate === requestedDate && o.requestedSlot === requestedSlot && o.status !== 'Cancelled'
     ).length;
 
-    if (existingSlotBookings >= totalSlotCapacity) {
+    if (totalSlotCapacity > 0 && existingSlotBookings >= totalSlotCapacity && onDutyPhlebosInZone.length > 0) {
       res.status(409).json({
-        error: 'Fully booked — please select another time slot.',
+        error: 'Fully booked — all on-duty phlebotomists in this zone are booked for this time slot. Please select another time slot.',
         statusCode: 409,
         slot: requestedSlot,
         capacity: totalSlotCapacity,
@@ -322,12 +323,34 @@ async function startServer() {
     const prefix = targetLabId === 'LAB-A' ? 'SWP-A' : targetLabId === 'LAB-B' ? 'SWP-B' : 'SWP-C';
     const newOrderId = `${prefix}${newOrderNumber}`;
 
-    // Auto-assign or manual assign
+    // Execute Auto-Assignment Algorithm or manual override
     let phlebo: any = null;
+    let assignmentStatus: 'Assigned' | 'Pending' = 'Pending';
+    let assignmentNote = '';
+
     if (assignedPhlebotomistId) {
-      phlebo = phlebotomistsDb.find(p => p.id === assignedPhlebotomistId);
+      phlebo = phlebotomistsDb.find(p => p.id === assignedPhlebotomistId) || null;
+      if (phlebo) {
+        assignmentStatus = 'Assigned';
+        assignmentNote = `Manually assigned to phlebotomist ${phlebo.name}`;
+      }
     } else {
-      phlebo = onDutyPhlebos.sort((a, b) => a.currentLoadToday - b.currentLoadToday)[0] || phlebotomistsDb[0];
+      const assignment = autoAssignPhlebotomist(
+        zone.id,
+        requestedDate || new Date().toISOString().slice(0, 10),
+        requestedSlot as BookingSlot,
+        phlebotomistsDb,
+        ordersDb
+      );
+
+      if (assignment.phlebotomist) {
+        phlebo = assignment.phlebotomist;
+        assignmentStatus = 'Assigned';
+        assignmentNote = `Auto-assigned to ${phlebo.name} (${zone.name})`;
+      } else {
+        assignmentStatus = 'Pending';
+        assignmentNote = assignment.reason || 'Pending technician assignment';
+      }
     }
 
     const nowIso = new Date().toISOString();
@@ -349,9 +372,9 @@ async function startServer() {
       requestedSlot: requestedSlot as BookingSlot,
       requiredVials: requiredVials as AllowedVialType[],
       assignedPhlebotomistId: phlebo ? phlebo.id : undefined,
-      assignedPhlebotomistName: phlebo ? `${phlebo.name} (${phlebo.certification.split('-')[0].trim()})` : undefined,
+      assignedPhlebotomistName: phlebo ? phlebo.name : undefined,
       assignedPhlebotomistPhone: phlebo ? phlebo.phone : undefined,
-      status: phlebo ? 'Assigned' : 'Pending',
+      status: assignmentStatus,
       scanned_barcodes: [],
       notes: notes || '',
       specialInstructions: specialInstructions || '',
@@ -369,7 +392,7 @@ async function startServer() {
               {
                 status: 'Assigned' as const,
                 timestamp: nowIso,
-                description: `Auto-assigned to phlebotomist ${phlebo.name}`,
+                description: assignmentNote,
                 actor: 'System Auto-Dispatch'
               }
             ]
@@ -388,7 +411,9 @@ async function startServer() {
 
     res.status(201).json({
       success: true,
-      message: 'Specimen collection order booked successfully',
+      message: assignmentStatus === 'Assigned'
+        ? `Order booked and assigned to ${phlebo.name}`
+        : 'Order booked (Pending technician assignment)',
       order: newOrder
     });
   });

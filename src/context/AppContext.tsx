@@ -17,6 +17,7 @@ import {
 } from '../types';
 import { DEMO_USERS, VIZAG_ZONES, INITIAL_LABS, INITIAL_PHLEBOTOMISTS, INITIAL_ORDERS, INITIAL_PAYOUTS } from '../data/mockData';
 import { sendWhatsAppNotification, WhatsAppEventType } from '../utils/whatsappService';
+import { autoAssignPhlebotomist } from '../utils/assignmentService';
 
 interface AppContextType {
   // Authentication & Tenant Identity
@@ -402,12 +403,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Client-side fallback creation for static deployment (GitHub Pages)
+    const targetZoneId = orderData.zoneId || 'zone-mvp';
+    const targetDate = orderData.requestedDate || new Date().toISOString().slice(0, 10);
+    const targetSlot = (orderData.requestedSlot || '07:00 - 08:00') as BookingSlot;
+
+    const assignment = autoAssignPhlebotomist(
+      targetZoneId,
+      targetDate,
+      targetSlot,
+      phlebotomists,
+      allOrdersStore
+    );
+
+    const phlebo = assignment.phlebotomist;
+    const assignmentStatus = assignment.status; // 'Assigned' | 'Pending'
     const newOrderId = `SWP-${Date.now().toString().slice(-4)}`;
     const nowIso = new Date().toISOString();
+
     const newOrder: Order = {
       id: newOrderId,
-      labId: currentUser.role === 'lab' && currentUser.labId ? currentUser.labId : (orderData.labId || 'LAB-001'),
-      labName: labs.find(l => l.id === (orderData.labId || currentUser.labId))?.name || 'Sunrise Diagnostics',
+      labId: currentUser.role === 'lab' && currentUser.labId ? currentUser.labId : (orderData.labId || 'LAB-A'),
+      labName: labs.find(l => l.id === (orderData.labId || currentUser.labId))?.name || 'Vijaya Diagnostics Vizag',
       patientName: orderData.patientName || 'Patient',
       patientAge: orderData.patientAge || 30,
       patientGender: orderData.patientGender || 'Other',
@@ -415,12 +431,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       address: orderData.address || 'Visakhapatnam',
       locality: orderData.locality || 'MVP Colony',
       pincode: orderData.pincode || '530017',
-      zoneId: orderData.zoneId || 'zone-mvp',
-      zoneName: zones.find(z => z.id === orderData.zoneId)?.name || 'MVP Colony Zone',
+      zoneId: targetZoneId,
+      zoneName: zones.find(z => z.id === targetZoneId)?.name || 'MVP Colony & Beach Road',
       requiredVials: orderData.requiredVials && orderData.requiredVials.length > 0 ? orderData.requiredVials : ['EDTA', 'Serum'],
-      requestedDate: orderData.requestedDate || new Date().toISOString().slice(0, 10),
-      requestedSlot: orderData.requestedSlot || '07:00 - 08:00',
-      status: 'Pending',
+      requestedDate: targetDate,
+      requestedSlot: targetSlot,
+      assignedPhlebotomistId: phlebo ? phlebo.id : undefined,
+      assignedPhlebotomistName: phlebo ? phlebo.name : undefined,
+      assignedPhlebotomistPhone: phlebo ? phlebo.phone : undefined,
+      status: assignmentStatus,
       specialInstructions: orderData.specialInstructions || '',
       timeline: [
         {
@@ -428,11 +447,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           description: 'Order placed by diagnostic lab',
           actor: currentUser.name || 'Lab User'
-        }
+        },
+        ...(phlebo
+          ? [
+              {
+                status: 'Assigned' as const,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                description: `Auto-assigned to phlebotomist ${phlebo.name}`,
+                actor: 'System Auto-Dispatch'
+              }
+            ]
+          : [])
       ],
       createdTimestamp: nowIso,
       updatedTimestamp: nowIso
     };
+
+    if (phlebo) {
+      setPhlebotomists(prev =>
+        prev.map(p => (p.id === phlebo.id ? { ...p, currentLoadToday: (p.currentLoadToday || 0) + 1 } : p))
+      );
+    }
 
     setAllOrdersStore(prev => [newOrder, ...prev]);
     return { success: true, order: newOrder };

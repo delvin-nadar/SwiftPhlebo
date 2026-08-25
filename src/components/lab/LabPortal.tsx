@@ -44,6 +44,7 @@ export const LabPortal: React.FC<LabPortalProps> = ({ onOpenSecurityModal }) => 
     orders,
     zones,
     labs,
+    phlebotomists,
     createOrder,
     getSlotAvailability,
     refreshData
@@ -384,19 +385,27 @@ export const LabPortal: React.FC<LabPortalProps> = ({ onOpenSecurityModal }) => 
                         </td>
 
                         <td className="px-5 py-4">
-                          {order.assignedPhlebotomistName ? (
-                            <div className="flex items-center space-x-1.5">
-                              <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
-                                {order.assignedPhlebotomistName[0]}
+                          {(() => {
+                            const assignedName = order.assignedPhlebotomistName || (order.assignedPhlebotomistId && phlebotomists.find(p => p.id === order.assignedPhlebotomistId)?.name);
+                            const assignedPhone = order.assignedPhlebotomistPhone || (order.assignedPhlebotomistId && phlebotomists.find(p => p.id === order.assignedPhlebotomistId)?.phone);
+                            
+                            return assignedName ? (
+                              <div className="flex items-center space-x-2">
+                                <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                                  {assignedName[0]}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-slate-900 leading-tight">{assignedName}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{assignedPhone || 'Verified DMLT'}</div>
+                                </div>
                               </div>
-                              <div>
-                                <div className="font-bold text-slate-900">{order.assignedPhlebotomistName}</div>
-                                <div className="text-[10px] text-slate-400">{order.assignedPhlebotomistPhone}</div>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 italic">Auto-dispatching...</span>
-                          )}
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                Pending Assignment
+                              </span>
+                            );
+                          })()}
                         </td>
 
                         <td className="px-5 py-4">
@@ -820,8 +829,16 @@ export const LabPortal: React.FC<LabPortalProps> = ({ onOpenSecurityModal }) => 
               <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-2xl border border-slate-200">
                 <div>
                   <span className="font-extrabold uppercase text-[10px] text-slate-400 block">Assigned Phlebotomist:</span>
-                  <div className="font-bold text-slate-900">{selectedOrder.assignedPhlebotomistName || 'Auto-Dispatch'}</div>
-                  <div className="text-slate-500">{selectedOrder.assignedPhlebotomistPhone}</div>
+                  <div className="font-bold text-slate-900">
+                    {selectedOrder.assignedPhlebotomistName || (selectedOrder.assignedPhlebotomistId && phlebotomists.find(p => p.id === selectedOrder.assignedPhlebotomistId)?.name) || (
+                      <span className="text-amber-700 font-semibold text-xs bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        Pending Assignment
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-slate-500 text-xs">
+                    {selectedOrder.assignedPhlebotomistPhone || (selectedOrder.assignedPhlebotomistId && phlebotomists.find(p => p.id === selectedOrder.assignedPhlebotomistId)?.phone) || ''}
+                  </div>
                 </div>
                 <div>
                   <span className="font-extrabold uppercase text-[10px] text-slate-400 block">Cold Storage Verification:</span>

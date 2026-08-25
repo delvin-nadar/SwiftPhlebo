@@ -229,24 +229,29 @@ export const LiveOrderBoard: React.FC = () => {
                     </td>
 
                     <td className="px-5 py-4">
-                      {order.assignedPhlebotomistName ? (
-                        <div className="flex items-center space-x-1.5">
-                          <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
-                            {order.assignedPhlebotomistName[0]}
+                      {(() => {
+                        const assignedName = order.assignedPhlebotomistName || (order.assignedPhlebotomistId && phlebotomists.find(p => p.id === order.assignedPhlebotomistId)?.name);
+                        const assignedPhone = order.assignedPhlebotomistPhone || (order.assignedPhlebotomistId && phlebotomists.find(p => p.id === order.assignedPhlebotomistId)?.phone);
+
+                        return assignedName ? (
+                          <div className="flex items-center space-x-1.5">
+                            <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">
+                              {assignedName[0]}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900">{assignedName}</div>
+                              <div className="text-[10px] text-slate-400">{assignedPhone || 'DMLT'}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-bold text-slate-900">{order.assignedPhlebotomistName}</div>
-                            <div className="text-[10px] text-slate-400">{order.assignedPhlebotomistPhone}</div>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleOpenAssign(order)}
-                          className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg text-xs"
-                        >
-                          + Assign Phlebo
-                        </button>
-                      )}
+                        ) : (
+                          <button
+                            onClick={() => handleOpenAssign(order)}
+                            className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-lg text-xs"
+                          >
+                            + Assign Phlebo
+                          </button>
+                        );
+                      })()}
                     </td>
 
                     <td className="px-5 py-4">
